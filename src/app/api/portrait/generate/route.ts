@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requirePortraitCapability } from "@/lib/aerovista/session";
 import { PORTRAIT_CAPABILITIES } from "@/lib/aerovista/config";
+import { getVisualIdentityProfile } from "@/lib/profile";
 import { generatePortrait, PortraitPreset } from "@/lib/portrait/provider";
 
 export const runtime = "nodejs";
@@ -19,14 +20,26 @@ export async function POST(request: Request) {
 
     const subjectName = String(form.get("subjectName") ?? "").trim();
     const preset = String(form.get("preset") ?? "executive") as PortraitPreset;
-    const direction = String(form.get("direction") ?? "").trim();
+    const userDirection = String(form.get("direction") ?? "").trim();
+    const profile = await getVisualIdentityProfile(session.identity.identityId);
+    const profileDirection = profile
+      ? [
+          profile.wardrobeNotes && "Wardrobe continuity: " + profile.wardrobeNotes,
+          profile.backgroundNotes && "Background continuity: " + profile.backgroundNotes,
+          profile.framingNotes && "Framing continuity: " + profile.framingNotes,
+          profile.appearanceNotes && "Appearance continuity: " + profile.appearanceNotes,
+        ].filter(Boolean).join("\n")
+      : "";
+    const direction = [profileDirection, userDirection].filter(Boolean).join("\n");
     const images = form.getAll("images").filter((value): value is File => value instanceof File);
 
     if (!subjectName || subjectName.length > 80) return NextResponse.json({ error: "Enter a valid subject name." }, { status: 400 });
     if (!allowedPresets.has(preset)) return NextResponse.json({ error: "Invalid portrait direction." }, { status: 400 });
     if (images.length < 1 || images.length > 5) return NextResponse.json({ error: "Upload between 1 and 5 reference photos." }, { status: 400 });
     if (!images.every((image) => imageTypes.has(image.type))) return NextResponse.json({ error: "Reference photos must be JPEG, PNG or WebP." }, { status: 400 });
-    if (images.some((image) => image.size > 12 * 1024 * 1024)) return NextResponse.json({ error: "Each reference photo must be 12 MB or smaller." }, { status: 400 });
+    if (images.some((image) => image.size > 1024 * 1024)) return NextResponse.json({ error: "Each prepared reference photo must be 1 MB or smaller." }, { status: 400 });
+    const totalBytes = images.reduce((sum, image) => sum + image.size, 0);
+    if (totalBytes > 4 * 1024 * 1024) return NextResponse.json({ error: "Prepared reference photos exceed the upload envelope." }, { status: 400 });
 
     const result = await generatePortrait({ subjectName, preset, direction, images });
 
