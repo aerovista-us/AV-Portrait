@@ -12,9 +12,9 @@ import {
   type ContentAccessRule,
   type IdentityDescriptor,
   type CompleteLoginOptions,
-} from './types.js';
-import { normalizeOrigin, normalizePath, readJsonResponse } from './http.js';
-import { evaluateContentAccess } from './content.js';
+} from './types';
+import { normalizeOrigin, normalizePath, readJsonResponse } from './http';
+import { evaluateContentAccess } from './content';
 
 const DEFAULT_ACCOUNT_ORIGIN = 'https://account.aerocoreos.com';
 const DEFAULT_STATE_STORAGE_KEY = 'aerocore_handoff_state';
