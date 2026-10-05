@@ -26,6 +26,42 @@ type Entitlement = {
   generationUnits: number;
 };
 
+async function compressReference(file: File) {
+  const bitmap = await createImageBitmap(file);
+  const maxEdge = 1400;
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Image preparation is unavailable in this browser.");
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (value) => value ? resolve(value) : reject(new Error("Could not prepare reference photo.")),
+      "image/jpeg",
+      0.8,
+    );
+  });
+
+  if (blob.size > 1024 * 1024) {
+    const retry = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (value) => value ? resolve(value) : reject(new Error("Could not prepare reference photo.")),
+        "image/jpeg",
+        0.62,
+      );
+    });
+    return new File([retry], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+  }
+
+  return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+}
+
 export default function StudioClient() {
   const [busy, setBusy] = useState(false);
   const [profileBusy, setProfileBusy] = useState(false);
@@ -83,9 +119,23 @@ export default function StudioClient() {
     setResult(null);
 
     try {
+      const body = new FormData(event.currentTarget);
+      const sourceFiles = body.getAll("images").filter((value): value is File => value instanceof File);
+      if (sourceFiles.length < 1 || sourceFiles.length > 5) {
+        throw new Error("Choose between 1 and 5 reference photos.");
+      }
+
+      body.delete("images");
+      const prepared = await Promise.all(sourceFiles.map(compressReference));
+      const totalBytes = prepared.reduce((sum, file) => sum + file.size, 0);
+      if (totalBytes > 4 * 1024 * 1024) {
+        throw new Error("These photos are still too large after preparation. Try fewer photos.");
+      }
+      prepared.forEach((file) => body.append("images", file, file.name));
+
       const response = await fetch("/api/portrait/generate", {
         method: "POST",
-        body: new FormData(event.currentTarget),
+        body,
       });
       const payload = (await response.json()) as GenerationResult;
       if (!response.ok) throw new Error(payload.error || "Generation failed.");
@@ -204,7 +254,7 @@ export default function StudioClient() {
           <div className="field">
             <label htmlFor="images">Authorized reference photos</label>
             <input id="images" name="images" type="file" accept="image/png,image/jpeg,image/webp" multiple required />
-            <span className="fieldHint">Use 1–5 clear photos of the same consenting adult. Source photos are submitted for this generation; the Visual Identity Profile stores preferences, not biometric embeddings.</span>
+            <span className="fieldHint">Use 1–5 clear photos of the same consenting adult. Photos are resized and compressed in your browser before upload; the Visual Identity Profile stores preferences, not biometric embeddings.</span>
           </div>
           <div className="field">
             <label htmlFor="preset">Portrait direction</label>
@@ -237,7 +287,7 @@ export default function StudioClient() {
             <img className="resultImage" src={result.image} alt="Generated professional portrait result" />
             <p>Review likeness carefully before using the image publicly.</p>
             <div className="actionRow">
-              <a className="button ghost" href={result.image} download="av-portrait.png">Save image</a>
+              <a className="button ghost" href={result.image} download="av-portrait.jpg">Save image</a>
               <button className="button ghost" type="button" onClick={() => checkout("professional")}>Unlock Professional pack</button>
             </div>
           </div>
