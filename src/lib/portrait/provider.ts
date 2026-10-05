@@ -31,6 +31,8 @@ export async function generatePortrait(input: PortraitRequest): Promise<Portrait
   form.append("prompt", buildPrompt(input));
   form.append("quality", "high");
   form.append("size", "1024x1536");
+  form.append("output_format", "jpeg");
+  form.append("output_compression", "82");
   for (const image of input.images) form.append("image[]", image, image.name || "reference.jpg");
 
   const response = await fetch("https://api.openai.com/v1/images/edits", {
