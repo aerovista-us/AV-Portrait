@@ -11,10 +11,10 @@ import {
   type ServiceRequestOptions,
   type SessionResolveResponse,
   type SessionRevokeResponse,
-} from './types.js';
-import { createServiceHmacSignature } from './hmac.js';
-import { evaluateContentAccess } from './content.js';
-import { normalizeOrigin, normalizePath, readJsonResponse, serializeBody } from './http.js';
+} from './types';
+import { createServiceHmacSignature } from './hmac';
+import { evaluateContentAccess } from './content';
+import { normalizeOrigin, normalizePath, readJsonResponse, serializeBody } from './http';
 
 const DEFAULT_IDENTITY_GATEWAY = 'https://identity-api.aerovista.us';
 
