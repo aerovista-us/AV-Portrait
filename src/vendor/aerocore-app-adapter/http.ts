@@ -1,4 +1,4 @@
-import { AdapterHttpError, type AdapterErrorBody } from './types.js';
+import { AdapterHttpError, type AdapterErrorBody } from './types';
 
 export function normalizeOrigin(value: string): string {
   return value.replace(/\/$/, '');
