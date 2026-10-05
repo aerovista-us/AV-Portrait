@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     const result = await generatePortrait({ subjectName, preset, direction, images });
 
     return NextResponse.json({
-      image: "data:image/png;base64," + result.imageBase64,
+      image: "data:image/jpeg;base64," + result.imageBase64,
       provider: result.provider,
       requestId: result.requestId,
       identity: session.identity.identityId,
