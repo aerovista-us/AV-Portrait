@@ -4,7 +4,7 @@ import {
   type ContentAccessMode,
   type ContentAccessRule,
   type IdentityDescriptor,
-} from './types.js';
+} from './types';
 
 function cleanList(values: string[] | undefined): string[] {
   return [...new Set((values ?? []).map((value) => String(value || '').trim()).filter(Boolean))];
