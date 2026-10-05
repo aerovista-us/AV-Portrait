@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { resolveAVIdentity } from "@/lib/identity";
+import { requirePortraitCapability } from "@/lib/aerovista/session";
+import { PORTRAIT_CAPABILITIES } from "@/lib/aerovista/config";
 import { generatePortrait, PortraitPreset } from "@/lib/portrait/provider";
 
 export const runtime = "nodejs";
@@ -9,7 +10,7 @@ const imageTypes = new Set(["image/jpeg","image/png","image/webp"]);
 
 export async function POST(request: Request) {
   try {
-    const identity = await resolveAVIdentity(request);
+    const session = await requirePortraitCapability(PORTRAIT_CAPABILITIES.generate);
     const form = await request.formData();
 
     if (form.get("adult") !== "yes" || form.get("authorized") !== "yes" || form.get("rights") !== "yes") {
@@ -33,11 +34,11 @@ export async function POST(request: Request) {
       image: "data:image/png;base64," + result.imageBase64,
       provider: result.provider,
       requestId: result.requestId,
-      identity: identity.subject ? "verified-session" : "session",
+      identity: session.identity.identityId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Portrait generation failed.";
-    const status = /Authentication required|Identity is required/.test(message) ? 401 : 500;
+    const status = Number((error as { status?: number }).status || 500);
     return NextResponse.json({ error: message }, { status });
   }
 }
