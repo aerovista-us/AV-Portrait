@@ -1,5 +1,5 @@
 import "server-only";
-import { get, list, put } from "@vercel/blob";
+import { get, put } from "@vercel/blob";
 
 function safeSegment(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 180);
@@ -19,10 +19,7 @@ export async function writePrivateJson(pathname: string, value: unknown) {
 }
 
 export async function readPrivateJson<T>(pathname: string): Promise<T | null> {
-  const found = await list({ prefix: pathname, limit: 10 });
-  const blob = found.blobs.find((item) => item.pathname === pathname);
-  if (!blob) return null;
-  const result = await get(blob.url, { access: "private" });
+  const result = await get(pathname, { access: "private", useCache: false });
   if (!result) return null;
   return new Response(result.stream).json() as Promise<T>;
 }
